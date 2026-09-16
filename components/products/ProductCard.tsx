@@ -8,8 +8,8 @@ export default function ProductCard({
   product,
 }: ProductCardProps) {
   return (
-    <article className="group overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 transition hover:-translate-y-1 hover:border-gray-700">
-      <div className="aspect-[4/3] overflow-hidden bg-gray-800">
+    <article className="group surface overflow-hidden transition hover:-translate-y-0.5 hover:border-gray-600">
+      <div className="aspect-[4/3] overflow-hidden bg-white/95">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -23,10 +23,10 @@ export default function ProductCard({
         )}
       </div>
 
-      <div className="p-5">
+      <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
               {product.brand || "Laptop"}
             </p>
 
@@ -35,7 +35,7 @@ export default function ProductCard({
             </h2>
           </div>
 
-          <p className="whitespace-nowrap text-lg font-semibold text-white">
+          <p className="whitespace-nowrap text-lg font-bold text-white">
             ${Number(product.price).toFixed(2)}
           </p>
         </div>
@@ -104,12 +104,12 @@ function Spec({
   value,
 }: SpecProps) {
   return (
-    <div className="rounded-xl bg-gray-950 p-3">
+    <div className="surface-muted min-w-0 p-3">
       <p className="text-xs text-gray-600">
         {label}
       </p>
 
-      <p className="mt-1 truncate text-gray-300">
+      <p title={value || undefined} className="mt-1 truncate text-gray-300">
         {value || "—"}
       </p>
     </div>

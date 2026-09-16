@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #090a0c;
+  --foreground: #f4f4f5;
+  --surface: #111316;
+  --surface-raised: #17191d;
+  --border: #272a30;
+  --muted: #9297a1;
+  --subtle: #626873;
+  --accent: #f4f4f5;
+  --danger: #f87171;
 }
 
 @theme inline {
@@ -12,15 +19,129 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html {
+  background: var(--background);
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #a1a1aa;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #e4e4e7;
+  color: #09090b;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: radial-gradient(circle at top right, rgba(63, 63, 70, 0.16), transparent 34rem), var(--background);
+}
+
+.page-container {
+  width: min(100% - 2rem, 78rem);
+  margin-inline: auto;
+}
+
+.surface {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(17, 19, 22, 0.86);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.12);
+}
+
+.surface-muted {
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: rgba(9, 10, 12, 0.72);
+}
+
+.page-kicker {
+  color: var(--subtle);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-tertiary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.btn-primary { background: #f4f4f5; color: #09090b; }
+.btn-primary:hover { background: #d4d4d8; }
+.btn-secondary { border: 1px solid #3f424a; color: #e4e4e7; }
+.btn-secondary:hover { border-color: #71717a; background: #181a1f; }
+.btn-danger { border: 1px solid #7f1d1d; color: #fca5a5; }
+.btn-danger:hover { background: rgba(127, 29, 29, 0.28); }
+.btn-tertiary { color: #a1a1aa; }
+.btn-tertiary:hover { color: #fafafa; background: #181a1f; }
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-tertiary:disabled { cursor: not-allowed; opacity: 0.45; }
+
+.field-control {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid #30333a;
+  border-radius: 0.7rem;
+  background: #0d0f12;
+  padding: 0.7rem 0.85rem;
+  color: #f4f4f5;
+  outline: none;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.field-control::placeholder { color: #5f646e; }
+.field-control:hover { border-color: #454951; }
+.field-control:focus { border-color: #a1a1aa; background: #111316; }
+
+.empty-state {
+  border: 1px dashed #34373e;
+  border-radius: 1rem;
+  background: rgba(17, 19, 22, 0.52);
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .page-container { width: min(100% - 3rem, 78rem); }
 }

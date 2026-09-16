@@ -1,6 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
@@ -8,43 +13,84 @@ import { supabase } from "@/lib/supabase";
 export default function AdminLoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] =
+    useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
-  const [error, setError] = useState("");
+  const [password, setPassword] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [
+    checkingSession,
+    setCheckingSession,
+  ] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
-    checkExistingSession();
+    void checkExistingSession();
   }, []);
 
   async function checkExistingSession() {
     setCheckingSession(true);
+    setError("");
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } =
+        await supabase.auth.getUser();
 
-    if (!user) {
+      if (
+        userError ||
+        !user
+      ) {
+        setCheckingSession(false);
+        return;
+      }
+
+      const {
+        data: adminRecord,
+        error: adminError,
+      } =
+        await supabase
+          .from("admins")
+          .select("user_id")
+          .eq(
+            "user_id",
+            user.id
+          )
+          .maybeSingle();
+
+      if (
+        !adminError &&
+        adminRecord
+      ) {
+        router.replace(
+          "/admin/products"
+        );
+
+        return;
+      }
+
+      await supabase.auth.signOut();
+
       setCheckingSession(false);
-      return;
+    } catch (error) {
+      console.error(
+        "Session check error:",
+        error
+      );
+
+      await supabase.auth.signOut();
+
+      setCheckingSession(false);
     }
-
-    const { data: adminRecord } = await supabase
-      .from("admins")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (adminRecord) {
-      router.replace("/admin/products");
-      return;
-    }
-
-    await supabase.auth.signOut();
-
-    setCheckingSession(false);
   }
 
   async function handleLogin(
@@ -52,36 +98,65 @@ export default function AdminLoginPage() {
   ) {
     event.preventDefault();
 
+    if (loading) {
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const { data, error: loginError } =
-        await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+      const {
+        data,
+        error: loginError,
+      } =
+        await supabase.auth
+          .signInWithPassword({
+            email:
+              email.trim(),
+
+            password,
+          });
 
       if (loginError) {
-        setError(loginError.message);
+        setError(
+          loginError.message
+        );
+
         return;
       }
 
       if (!data.user) {
-        setError("Unable to sign in.");
+        setError(
+          "Unable to sign in."
+        );
+
         return;
       }
+
+      // ---------------------------------
+      // Verify that this user is an admin
+      // ---------------------------------
 
       const {
         data: adminRecord,
         error: adminError,
-      } = await supabase
-        .from("admins")
-        .select("user_id")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
+      } =
+        await supabase
+          .from("admins")
+          .select("user_id")
+          .eq(
+            "user_id",
+            data.user.id
+          )
+          .maybeSingle();
 
       if (adminError) {
+        console.error(
+          "Admin verification error:",
+          adminError
+        );
+
         await supabase.auth.signOut();
 
         setError(
@@ -101,10 +176,20 @@ export default function AdminLoginPage() {
         return;
       }
 
-      router.replace("/admin/products");
+      // ---------------------------------
+      // Successful admin login
+      // ---------------------------------
+
+      router.replace(
+        "/admin/products"
+      );
+
       router.refresh();
     } catch (error) {
-      console.error("Login error:", error);
+      console.error(
+        "Login error:",
+        error
+      );
 
       setError(
         "Something went wrong while signing in."
@@ -116,18 +201,29 @@ export default function AdminLoginPage() {
 
   if (checkingSession) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
-        <p className="text-sm text-gray-500">
-          Checking session...
-        </p>
+      <main className="app-shell flex min-h-screen items-center justify-center text-white">
+
+        <div className="text-center">
+
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-700 border-t-white" />
+
+          <p className="mt-4 text-sm text-gray-500">
+            Checking session...
+          </p>
+
+        </div>
+
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-950 px-6 text-white">
+    <main className="app-shell flex min-h-screen items-center justify-center px-4 text-white sm:px-6">
+
       <div className="w-full max-w-md">
+
         <div className="mb-8 text-center">
+
           <p className="text-sm uppercase tracking-[0.3em] text-gray-500">
             Laptop AI Advisor
           </p>
@@ -138,21 +234,26 @@ export default function AdminLoginPage() {
 
           <p className="mt-3 text-sm leading-6 text-gray-500">
             Sign in with an authorized administrator
-            account to manage the product catalogue.
+            account to manage the platform.
           </p>
+
         </div>
 
         <form
           onSubmit={handleLogin}
-          className="space-y-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl"
+          className="surface space-y-5 p-6 shadow-2xl sm:p-7"
         >
+
           {error && (
             <div className="rounded-xl border border-red-900 bg-red-950/30 p-3 text-sm text-red-400">
               {error}
             </div>
           )}
 
+          {/* Email */}
+
           <div>
+
             <label
               htmlFor="email"
               className="mb-2 block text-sm text-gray-300"
@@ -165,16 +266,23 @@ export default function AdminLoginPage() {
               type="email"
               value={email}
               onChange={(event) =>
-                setEmail(event.target.value)
+                setEmail(
+                  event.target.value
+                )
               }
               required
               autoComplete="email"
               placeholder="admin@example.com"
-              className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition placeholder:text-gray-700 focus:border-gray-500"
+              disabled={loading}
+              className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition placeholder:text-gray-700 focus:border-gray-500 disabled:opacity-60"
             />
+
           </div>
 
+          {/* Password */}
+
           <div>
+
             <label
               htmlFor="password"
               className="mb-2 block text-sm text-gray-300"
@@ -187,14 +295,20 @@ export default function AdminLoginPage() {
               type="password"
               value={password}
               onChange={(event) =>
-                setPassword(event.target.value)
+                setPassword(
+                  event.target.value
+                )
               }
               required
               autoComplete="current-password"
               placeholder="Enter your password"
-              className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition placeholder:text-gray-700 focus:border-gray-500"
+              disabled={loading}
+              className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition placeholder:text-gray-700 focus:border-gray-500 disabled:opacity-60"
             />
+
           </div>
+
+          {/* Submit */}
 
           <button
             type="submit"
@@ -205,12 +319,15 @@ export default function AdminLoginPage() {
               ? "Signing in..."
               : "Sign In"}
           </button>
+
         </form>
 
         <p className="mt-5 text-center text-xs text-gray-700">
           Authorized administrators only.
         </p>
+
       </div>
+
     </main>
   );
 }

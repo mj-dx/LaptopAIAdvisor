@@ -17,6 +17,8 @@ import ProductForm, {
 
 import AdminProductCard from "@/components/products/AdminProductCard";
 
+import AdminNav from "../AdminNav";
+
 export default function ProductsAdminPage() {
   const router = useRouter();
 
@@ -24,9 +26,6 @@ export default function ProductsAdminPage() {
     useState<Product[]>([]);
 
   const [loading, setLoading] =
-    useState(true);
-
-  const [checkingAuth, setCheckingAuth] =
     useState(true);
 
   const [showForm, setShowForm] =
@@ -40,73 +39,64 @@ export default function ProductsAdminPage() {
   const [error, setError] =
     useState("");
 
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // ========================================
+  // Load products
+  // ========================================
 
-    const {
-      data,
-      error: productsError,
-    } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", {
-        ascending: false,
-      });
+  const loadProducts =
+    useCallback(async () => {
+      setLoading(true);
+      setError("");
 
-    if (productsError) {
-      setError(productsError.message);
-      setProducts([]);
-    } else {
-      setProducts(data || []);
-    }
+      try {
+        const {
+          data,
+          error: productsError,
+        } = await supabase
+          .from("products")
+          .select("*")
+          .order("created_at", {
+            ascending: false,
+          });
 
-    setLoading(false);
-  }, []);
+        if (productsError) {
+          throw productsError;
+        }
 
-  const checkAdmin = useCallback(
-    async () => {
-      setCheckingAuth(true);
+        setProducts(
+          (data || []) as Product[]
+        );
+      } catch (error) {
+        console.error(
+          "Load products error:",
+          error
+        );
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+        setProducts([]);
 
-      if (userError || !user) {
-        router.replace("/admin/login");
-        return;
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load products."
+        );
+      } finally {
+        setLoading(false);
       }
+    }, []);
 
-      const {
-        data: adminRecord,
-        error: adminError,
-      } = await supabase
-        .from("admins")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (
-        adminError ||
-        !adminRecord
-      ) {
-        await supabase.auth.signOut();
-
-        router.replace("/admin/login");
-        return;
-      }
-
-      await loadProducts();
-
-      setCheckingAuth(false);
-    },
-    [loadProducts, router]
-  );
+  // ========================================
+  // Load on page open
+  // Authentication is handled by
+  // app/admin/layout.tsx
+  // ========================================
 
   useEffect(() => {
-    checkAdmin();
-  }, [checkAdmin]);
+    void loadProducts();
+  }, [loadProducts]);
+
+  // ========================================
+  // Add product
+  // ========================================
 
   async function addProduct(
     data: ProductFormData
@@ -127,35 +117,63 @@ export default function ProductsAdminPage() {
       return;
     }
 
-    const { error: insertError } =
-      await supabase
-        .from("products")
-        .insert({
-          name: data.name.trim(),
-          brand:
-            data.brand.trim() || null,
-          description:
-            data.description.trim() ||
-            null,
-          price,
-          cpu:
-            data.cpu.trim() || null,
-          ram:
-            data.ram.trim() || null,
-          storage:
-            data.storage.trim() || null,
-          gpu:
-            data.gpu.trim() || null,
-          screen:
-            data.screen.trim() || null,
-          battery:
-            data.battery.trim() || null,
-          image_url:
-            data.image_url || null,
-        });
+    const {
+      error: insertError,
+    } = await supabase
+      .from("products")
+      .insert({
+        name:
+          data.name.trim(),
+
+        brand:
+          data.brand.trim() ||
+          null,
+
+        description:
+          data.description.trim() ||
+          null,
+
+        price,
+
+        cpu:
+          data.cpu.trim() ||
+          null,
+
+        ram:
+          data.ram.trim() ||
+          null,
+
+        storage:
+          data.storage.trim() ||
+          null,
+
+        gpu:
+          data.gpu.trim() ||
+          null,
+
+        screen:
+          data.screen.trim() ||
+          null,
+
+        battery:
+          data.battery.trim() ||
+          null,
+
+        image_url:
+          data.image_url ||
+          null,
+      });
 
     if (insertError) {
-      setError(insertError.message);
+      console.error(
+        "Add product error:",
+        insertError
+      );
+
+      setError(
+        insertError.message
+      );
+
       return;
     }
 
@@ -164,6 +182,10 @@ export default function ProductsAdminPage() {
 
     await loadProducts();
   }
+
+  // ========================================
+  // Update product
+  // ========================================
 
   async function updateProduct(
     data: ProductFormData
@@ -188,39 +210,67 @@ export default function ProductsAdminPage() {
       return;
     }
 
-    const { error: updateError } =
-      await supabase
-        .from("products")
-        .update({
-          name: data.name.trim(),
-          brand:
-            data.brand.trim() || null,
-          description:
-            data.description.trim() ||
-            null,
-          price,
-          cpu:
-            data.cpu.trim() || null,
-          ram:
-            data.ram.trim() || null,
-          storage:
-            data.storage.trim() || null,
-          gpu:
-            data.gpu.trim() || null,
-          screen:
-            data.screen.trim() || null,
-          battery:
-            data.battery.trim() || null,
-          image_url:
-            data.image_url || null,
-        })
-        .eq(
-          "id",
-          editingProduct.id
-        );
+    const {
+      error: updateError,
+    } = await supabase
+      .from("products")
+      .update({
+        name:
+          data.name.trim(),
+
+        brand:
+          data.brand.trim() ||
+          null,
+
+        description:
+          data.description.trim() ||
+          null,
+
+        price,
+
+        cpu:
+          data.cpu.trim() ||
+          null,
+
+        ram:
+          data.ram.trim() ||
+          null,
+
+        storage:
+          data.storage.trim() ||
+          null,
+
+        gpu:
+          data.gpu.trim() ||
+          null,
+
+        screen:
+          data.screen.trim() ||
+          null,
+
+        battery:
+          data.battery.trim() ||
+          null,
+
+        image_url:
+          data.image_url ||
+          null,
+      })
+      .eq(
+        "id",
+        editingProduct.id
+      );
 
     if (updateError) {
-      setError(updateError.message);
+      console.error(
+        "Update product error:",
+        updateError
+      );
+
+      setError(
+        updateError.message
+      );
+
       return;
     }
 
@@ -229,6 +279,10 @@ export default function ProductsAdminPage() {
 
     await loadProducts();
   }
+
+  // ========================================
+  // Delete product
+  // ========================================
 
   async function deleteProduct(
     id: string
@@ -244,19 +298,32 @@ export default function ProductsAdminPage() {
 
     setError("");
 
-    const { error: deleteError } =
-      await supabase
-        .from("products")
-        .delete()
-        .eq("id", id);
+    const {
+      error: deleteError,
+    } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
 
     if (deleteError) {
-      setError(deleteError.message);
+      console.error(
+        "Delete product error:",
+        deleteError
+      );
+
+      setError(
+        deleteError.message
+      );
+
       return;
     }
 
     await loadProducts();
   }
+
+  // ========================================
+  // Product form
+  // ========================================
 
   function openAddProduct() {
     setEditingProduct(null);
@@ -277,31 +344,51 @@ export default function ProductsAdminPage() {
     setEditingProduct(null);
   }
 
+  // ========================================
+  // Logout
+  // ========================================
+
   async function handleLogout() {
-    await supabase.auth.signOut();
+    setError("");
 
-    router.replace("/admin/login");
-    router.refresh();
-  }
+    try {
+      const {
+        error: logoutError,
+      } =
+        await supabase.auth.signOut();
 
-  if (checkingAuth) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
-        <div className="text-center">
-          <p className="text-sm text-gray-500">
-            Checking admin access...
-          </p>
-        </div>
-      </main>
-    );
+      if (logoutError) {
+        throw logoutError;
+      }
+
+      router.replace(
+        "/admin/login"
+      );
+
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "Logout error:",
+        error
+      );
+
+      setError(
+        "Unable to log out. Please try again."
+      );
+    }
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+    <main className="app-shell text-white">
+
+      <div className="page-container py-8 sm:py-10">
+
+        {/* Header */}
 
         <div className="flex flex-col gap-5 border-b border-gray-900 pb-8 md:flex-row md:items-center md:justify-between">
+
           <div>
+
             <p className="text-sm uppercase tracking-[0.25em] text-gray-500">
               Admin Dashboard
             </p>
@@ -314,24 +401,40 @@ export default function ProductsAdminPage() {
               Manage the product catalogue
               used by the AI assistant.
             </p>
+
           </div>
 
           <div className="flex flex-wrap gap-3">
+
             <button
-              onClick={openAddProduct}
-              className="rounded-xl bg-white px-5 py-3 font-medium text-black transition hover:bg-gray-200"
+              type="button"
+              onClick={
+                openAddProduct
+              }
+              className="btn-primary"
             >
               Add Product
             </button>
 
             <button
-              onClick={handleLogout}
-              className="rounded-xl border border-gray-700 px-5 py-3 font-medium text-gray-300 transition hover:bg-gray-900"
+              type="button"
+              onClick={
+                handleLogout
+              }
+              className="btn-tertiary"
             >
               Logout
             </button>
+
           </div>
+
         </div>
+
+        <div className="mt-6">
+          <AdminNav />
+        </div>
+
+        {/* Error */}
 
         {error && (
           <div className="mt-6 rounded-xl border border-red-900 bg-red-950/30 p-4 text-red-400">
@@ -339,12 +442,14 @@ export default function ProductsAdminPage() {
           </div>
         )}
 
-        {(
-          showForm ||
-          editingProduct
-        ) && (
+        {/* Form */}
+
+        {(showForm ||
+          editingProduct) && (
           <div className="mt-8">
+
             <div className="mb-4">
+
               <h2 className="text-2xl font-semibold">
                 {editingProduct
                   ? "Edit Product"
@@ -356,6 +461,7 @@ export default function ProductsAdminPage() {
                   ? "Update the product information below."
                   : "Add a new laptop to the catalogue."}
               </p>
+
             </div>
 
             <ProductForm
@@ -364,31 +470,42 @@ export default function ProductsAdminPage() {
                   ? {
                       name:
                         editingProduct.name,
+
                       brand:
                         editingProduct.brand ||
                         "",
+
                       description:
                         editingProduct.description ||
                         "",
-                      price: `${editingProduct.price}`,
+
+                      price:
+                        `${editingProduct.price}`,
+
                       cpu:
                         editingProduct.cpu ||
                         "",
+
                       ram:
                         editingProduct.ram ||
                         "",
+
                       storage:
                         editingProduct.storage ||
                         "",
+
                       gpu:
                         editingProduct.gpu ||
                         "",
+
                       screen:
                         editingProduct.screen ||
                         "",
+
                       battery:
                         editingProduct.battery ||
                         "",
+
                       image_url:
                         editingProduct.image_url ||
                         "",
@@ -400,14 +517,22 @@ export default function ProductsAdminPage() {
                   ? updateProduct
                   : addProduct
               }
-              onCancel={closeForm}
+              onCancel={
+                closeForm
+              }
             />
+
           </div>
         )}
 
+        {/* Catalogue */}
+
         <div className="mt-10">
+
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
             <div>
+
               <h2 className="text-xl font-semibold">
                 Product Catalogue
               </h2>
@@ -417,6 +542,7 @@ export default function ProductsAdminPage() {
                 customers and the AI
                 assistant.
               </p>
+
             </div>
 
             <p className="text-sm text-gray-500">
@@ -425,7 +551,10 @@ export default function ProductsAdminPage() {
                 ? "product"
                 : "products"}
             </p>
+
           </div>
+
+          {/* Loading */}
 
           {loading ? (
             <div className="rounded-2xl border border-gray-800 bg-gray-900 p-10 text-center text-gray-500">
@@ -434,6 +563,7 @@ export default function ProductsAdminPage() {
           ) : products.length ===
             0 ? (
             <div className="rounded-2xl border border-gray-800 bg-gray-900 p-10 text-center">
+
               <p className="text-lg text-gray-400">
                 No products yet.
               </p>
@@ -445,6 +575,7 @@ export default function ProductsAdminPage() {
               </p>
 
               <button
+                type="button"
                 onClick={
                   openAddProduct
                 }
@@ -452,14 +583,20 @@ export default function ProductsAdminPage() {
               >
                 Add First Product
               </button>
+
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
               {products.map(
                 (product) => (
                   <AdminProductCard
-                    key={product.id}
-                    product={product}
+                    key={
+                      product.id
+                    }
+                    product={
+                      product
+                    }
                     onEdit={
                       openEditProduct
                     }
@@ -469,10 +606,14 @@ export default function ProductsAdminPage() {
                   />
                 )
               )}
+
             </div>
           )}
+
         </div>
+
       </div>
+
     </main>
   );
 }

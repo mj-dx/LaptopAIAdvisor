@@ -183,11 +183,11 @@ export default function ProductForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-2xl border border-gray-800 bg-gray-900 p-6"
+      className="surface space-y-8 p-5 sm:p-7"
     >
       <div>
         <h3 className="text-xl font-semibold">
-          Product Information
+          Basic information
         </h3>
 
         <p className="mt-1 text-sm text-gray-500">
@@ -221,47 +221,54 @@ export default function ProductForm({
           required
         />
 
+      </div>
+
+      <div className="border-t border-gray-800 pt-6">
+        <p className="mb-4 text-sm font-semibold text-gray-300">Hardware specifications</p>
+        <div className="grid gap-5 md:grid-cols-2">
         <Input
           label="CPU"
           name="cpu"
           value={form.cpu}
           onChange={handleChange}
         />
-
         <Input
           label="RAM"
           name="ram"
           value={form.ram}
           onChange={handleChange}
         />
-
         <Input
           label="Storage"
           name="storage"
           value={form.storage}
           onChange={handleChange}
         />
-
         <Input
           label="GPU"
           name="gpu"
           value={form.gpu}
           onChange={handleChange}
         />
+        </div>
+      </div>
 
+      <div className="border-t border-gray-800 pt-6">
+        <p className="mb-4 text-sm font-semibold text-gray-300">Display and battery</p>
+        <div className="grid gap-5 md:grid-cols-2">
         <Input
           label="Screen"
           name="screen"
           value={form.screen}
           onChange={handleChange}
         />
-
         <Input
           label="Battery"
           name="battery"
           value={form.battery}
           onChange={handleChange}
         />
+        </div>
       </div>
 
       <div>
@@ -279,7 +286,7 @@ export default function ProductForm({
           onChange={handleChange}
           rows={5}
           placeholder="Describe this laptop and its ideal use cases..."
-          className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition placeholder:text-gray-600 focus:border-gray-500"
+          className="field-control min-h-32 resize-y"
         />
       </div>
 
@@ -298,7 +305,7 @@ export default function ProductForm({
           accept="image/jpeg,image/png,image/webp"
           onChange={handleImageUpload}
           disabled={imageUploading}
-          className="mt-4 block w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-sm text-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+          className="field-control mt-4 block text-sm file:mr-4 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:font-medium file:text-black disabled:cursor-not-allowed disabled:opacity-50"
         />
 
         {imageUploading && (
@@ -330,13 +337,13 @@ export default function ProductForm({
         )}
       </div>
 
-      <div className="flex gap-3 border-t border-gray-800 pt-6">
+      <div className="flex flex-col-reverse gap-3 border-t border-gray-800 pt-6 sm:flex-row">
         <button
           type="submit"
           disabled={
             loading || imageUploading
           }
-          className="rounded-xl bg-white px-5 py-3 font-medium text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn-primary"
         >
           {imageUploading
             ? "Uploading..."
@@ -349,7 +356,7 @@ export default function ProductForm({
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="rounded-xl border border-gray-700 px-5 py-3 text-gray-300 transition hover:bg-gray-800 disabled:opacity-50"
+          className="btn-tertiary border border-gray-700 disabled:opacity-50"
         >
           Cancel
         </button>
@@ -409,7 +416,7 @@ function Input({
             ? "0.01"
             : undefined
         }
-        className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition focus:border-gray-500"
+        className="field-control"
       />
     </div>
   );

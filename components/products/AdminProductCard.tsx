@@ -14,8 +14,8 @@ export default function AdminProductCard({
   onDelete,
 }: Props) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
-      <div className="aspect-video bg-gray-800">
+    <div className="surface overflow-hidden">
+      <div className="aspect-video bg-white/95">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -29,10 +29,10 @@ export default function AdminProductCard({
         )}
       </div>
 
-      <div className="p-5">
+      <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
               {product.brand || "Unknown brand"}
             </p>
 
@@ -46,24 +46,24 @@ export default function AdminProductCard({
           </p>
         </div>
 
-        <div className="mt-4 space-y-1 text-sm text-gray-400">
-          <p>CPU: {product.cpu || "-"}</p>
-          <p>RAM: {product.ram || "-"}</p>
-          <p>Storage: {product.storage || "-"}</p>
-          <p>GPU: {product.gpu || "-"}</p>
+        <div className="mt-5 grid grid-cols-2 gap-2 text-sm text-gray-400">
+          <p className="surface-muted truncate p-2.5">CPU: {product.cpu || "-"}</p>
+          <p className="surface-muted truncate p-2.5">RAM: {product.ram || "-"}</p>
+          <p className="surface-muted truncate p-2.5">Storage: {product.storage || "-"}</p>
+          <p className="surface-muted truncate p-2.5">GPU: {product.gpu || "-"}</p>
         </div>
 
-        <div className="mt-5 flex gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             onClick={() => onEdit(product)}
-            className="flex-1 rounded-xl border border-gray-700 px-4 py-2 hover:bg-gray-800"
+            className="btn-secondary"
           >
             Edit
           </button>
 
           <button
             onClick={() => onDelete(product.id)}
-            className="flex-1 rounded-xl border border-red-900 px-4 py-2 text-red-400 hover:bg-red-950"
+            className="btn-danger"
           >
             Delete
           </button>

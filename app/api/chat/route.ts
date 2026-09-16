@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { SYSTEM_PROMPT } from "@/lib/ai/systemPrompt";
 import { evaluateAnswer } from "@/lib/ai/evaluateAnswer";
+import { requestGemini } from "@/lib/ai/geminiRequest";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const supabaseUrl =
@@ -48,6 +49,10 @@ export async function POST(
   request: Request
 ) {
   try {
+    // ========================================
+    // Check Gemini API key
+    // ========================================
+
     if (!geminiApiKey) {
       return NextResponse.json(
         {
@@ -59,6 +64,10 @@ export async function POST(
         }
       );
     }
+
+    // ========================================
+    // Parse request
+    // ========================================
 
     const body =
       await request.json();
@@ -86,6 +95,10 @@ export async function POST(
         }
       );
     }
+
+    // ========================================
+    // Validate history
+    // ========================================
 
     const history: IncomingMessage[] =
       Array.isArray(body.history)
@@ -143,6 +156,7 @@ export async function POST(
         !conversation
       ) {
         console.error(
+          "Create conversation error:",
           conversationError
         );
 
@@ -162,23 +176,47 @@ export async function POST(
     }
 
     // ========================================
-    // Verify conversation
+    // Verify conversation exists
     // ========================================
 
     const {
       data:
         existingConversation,
+      error:
+        conversationLookupError,
     } =
       await supabaseAdmin
         .from(
           "conversations"
         )
-        .select("id")
+        .select(`
+          id,
+          ended_at
+        `)
         .eq(
           "id",
           conversationId
         )
         .maybeSingle();
+
+    if (
+      conversationLookupError
+    ) {
+      console.error(
+        "Conversation lookup error:",
+        conversationLookupError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Unable to verify conversation.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
 
     if (!existingConversation) {
       return NextResponse.json(
@@ -188,6 +226,22 @@ export async function POST(
         },
         {
           status: 404,
+        }
+      );
+    }
+
+    // Prevent messages after End Conversation
+
+    if (
+      existingConversation.ended_at
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This conversation has already ended. Please start a new chat.",
+        },
+        {
+          status: 409,
         }
       );
     }
@@ -206,7 +260,8 @@ export async function POST(
           conversation_id:
             conversationId,
 
-          role: "user",
+          role:
+            "user",
 
           content:
             message,
@@ -214,6 +269,7 @@ export async function POST(
 
     if (userSaveError) {
       console.error(
+        "Save user message error:",
         userSaveError
       );
 
@@ -229,7 +285,7 @@ export async function POST(
     }
 
     // ========================================
-    // Load catalogue
+    // Load product catalogue
     // ========================================
 
     const {
@@ -264,6 +320,7 @@ export async function POST(
       !products
     ) {
       console.error(
+        "Load products error:",
         productsError
       );
 
@@ -277,6 +334,10 @@ export async function POST(
         }
       );
     }
+
+    // ========================================
+    // Build catalogue context
+    // ========================================
 
     const catalogueText =
       products
@@ -293,11 +354,15 @@ GPU: ${product.gpu ?? "Not provided"}
 SCREEN: ${product.screen ?? "Not provided"}
 BATTERY: ${product.battery ?? "Not provided"}
 DESCRIPTION: ${product.description ?? "Not provided"}
-`.trim()
+          `.trim()
         )
         .join(
           "\n\n--------------------\n\n"
         );
+
+    // ========================================
+    // Build conversation context
+    // ========================================
 
     const historyText =
       history.length > 0
@@ -311,8 +376,14 @@ DESCRIPTION: ${product.description ?? "Not provided"}
                     : "ASSISTANT"
                 }: ${item.content}`
             )
-            .join("\n\n")
+            .join(
+              "\n\n"
+            )
         : "No previous conversation.";
+
+    // ========================================
+    // Build Gemini prompt
+    // ========================================
 
     const prompt = `
 ${SYSTEM_PROMPT}
@@ -345,83 +416,66 @@ Return ONLY valid JSON:
   "answer": "your response",
   "recommended_product_ids": []
 }
-`.trim();
+    `.trim();
 
     // ========================================
-    // Generate answer
+    // Generate AI answer
     // ========================================
 
     const model =
+      process.env
+        .GEMINI_CHAT_MODEL ||
       "gemini-3.1-flash-lite";
 
     const geminiUrl =
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const geminiResponse =
-      await fetch(
-        geminiUrl,
-        {
-          method: "POST",
+      await requestGemini({
+        url:
+          geminiUrl,
 
-          headers: {
-            "Content-Type":
-              "application/json",
+        apiKey:
+          geminiApiKey,
 
-            "x-goog-api-key":
-              geminiApiKey,
-          },
+        label:
+          "Chat",
 
-          body:
-            JSON.stringify({
-              contents: [
+        maxAttempts:
+          3,
+
+        body: {
+          contents: [
+            {
+              role:
+                "user",
+
+              parts: [
                 {
-                  role:
-                    "user",
-
-                  parts: [
-                    {
-                      text:
-                        prompt,
-                    },
-                  ],
+                  text:
+                    prompt,
                 },
               ],
+            },
+          ],
 
-              generationConfig:
-                {
-                  temperature:
-                    0.2,
+          generationConfig:
+            {
+              temperature:
+                0.2,
 
-                  maxOutputTokens:
-                    1200,
+              maxOutputTokens:
+                1200,
 
-                  responseMimeType:
-                    "application/json",
-                },
-            }),
-        }
-      );
-
-    if (!geminiResponse.ok) {
-      const errorText =
-        await geminiResponse.text();
-
-      console.error(
-        "Gemini error:",
-        errorText
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Gemini AI service failed.",
+              responseMimeType:
+                "application/json",
+            },
         },
-        {
-          status:
-            geminiResponse.status,
-        }
-      );
-    }
+      });
+
+    // ========================================
+    // Parse Gemini response
+    // ========================================
 
     const geminiData =
       await geminiResponse.json();
@@ -442,34 +496,57 @@ Return ONLY valid JSON:
         .trim();
 
     if (!rawText) {
+      console.error(
+        "Gemini returned empty response:",
+        geminiData
+      );
+
       return NextResponse.json(
         {
           error:
             "Gemini returned an empty response.",
         },
         {
-          status: 500,
+          status: 502,
         }
       );
     }
+
+    // ========================================
+    // Parse Gemini JSON
+    // ========================================
 
     let result:
       GeminiResult;
 
     try {
       result =
-        JSON.parse(rawText);
-    } catch {
+        JSON.parse(
+          rawText
+        );
+    } catch (error) {
+      console.error(
+        "Gemini returned invalid JSON:",
+        {
+          error,
+          rawText,
+        }
+      );
+
       return NextResponse.json(
         {
           error:
             "Gemini returned invalid JSON.",
         },
         {
-          status: 500,
+          status: 502,
         }
       );
     }
+
+    // ========================================
+    // Validate answer
+    // ========================================
 
     const answer =
       typeof result.answer ===
@@ -484,7 +561,7 @@ Return ONLY valid JSON:
             "AI response contained no answer.",
         },
         {
-          status: 500,
+          status: 502,
         }
       );
     }
@@ -508,33 +585,55 @@ Return ONLY valid JSON:
       )
         ? [
             ...new Set(
-              result.recommended_product_ids.filter(
-                (
-                  id
-                ): id is string =>
-                  typeof id ===
-                    "string" &&
-                  catalogueIds.has(
+              result
+                .recommended_product_ids
+                .filter(
+                  (
                     id
-                  )
-              )
+                  ): id is string =>
+                    typeof id ===
+                      "string" &&
+                    catalogueIds.has(
+                      id
+                    )
+                )
             ),
-          ].slice(0, 3)
+          ].slice(
+            0,
+            3
+          )
         : [];
+
+    // ========================================
+    // Build recommended product objects
+    // ========================================
 
     const recommendedProducts =
       ids
-        .map((id) =>
-          products.find(
-            (product) =>
-              product.id ===
-              id
-          )
+        .map(
+          (id) =>
+            products.find(
+              (product) =>
+                product.id ===
+                id
+            )
         )
-        .filter(Boolean);
+        .filter(
+          (
+            product
+          ): product is NonNullable<
+            typeof product
+          > =>
+            Boolean(product)
+        );
 
     // ========================================
     // Evaluate answer
+    //
+    // IMPORTANT:
+    // evaluateAnswer() now returns
+    // available: false instead of throwing
+    // when Gemini evaluator is temporarily down.
     // ========================================
 
     const evaluation =
@@ -552,12 +651,13 @@ Return ONLY valid JSON:
       });
 
     // ========================================
-    // Store assistant response + scores
+    // Save assistant response
     // ========================================
 
     const {
       data:
         assistantMessage,
+
       error:
         assistantSaveError,
     } =
@@ -573,23 +673,37 @@ Return ONLY valid JSON:
           content:
             answer,
 
+          // NULL when evaluator
+          // was unavailable
+
           accuracy_score:
-            evaluation
-              .accuracy_score,
+            evaluation.available
+              ? evaluation
+                  .accuracy_score
+              : null,
 
           hallucination_risk:
-            evaluation
-              .hallucination_risk,
+            evaluation.available
+              ? evaluation
+                  .hallucination_risk
+              : null,
 
           flagged:
-            evaluation
-              .flagged,
+            evaluation.available
+              ? evaluation
+                  .flagged
+              : false,
 
           recommended_product_ids:
             ids,
 
           evaluation_details:
             {
+              status:
+                evaluation.available
+                  ? "completed"
+                  : "unavailable",
+
               summary:
                 evaluation.summary,
 
@@ -598,16 +712,19 @@ Return ONLY valid JSON:
                   .unsupported_claims,
 
               evaluator_model:
-                model,
+                evaluation
+                  .evaluator_model,
             },
         })
         .select("id")
         .single();
 
     if (
-      assistantSaveError
+      assistantSaveError ||
+      !assistantMessage
     ) {
       console.error(
+        "Save assistant message error:",
         assistantSaveError
       );
 
@@ -622,6 +739,10 @@ Return ONLY valid JSON:
       );
     }
 
+    // ========================================
+    // Return successful response
+    // ========================================
+
     return NextResponse.json({
       conversationId,
 
@@ -632,26 +753,43 @@ Return ONLY valid JSON:
 
       recommendedProducts,
 
-      evaluation: {
-        accuracyScore:
-          evaluation
-            .accuracy_score,
+      // If evaluator failed,
+      // return null.
+      // The chat answer still works.
 
-        hallucinationRisk:
-          evaluation
-            .hallucination_risk,
+      evaluation:
+        evaluation.available
+          ? {
+              accuracyScore:
+                evaluation
+                  .accuracy_score,
 
-        flagged:
-          evaluation
-            .flagged,
+              hallucinationRisk:
+                evaluation
+                  .hallucination_risk,
 
-        summary:
-          evaluation.summary,
-      },
+              flagged:
+                evaluation
+                  .flagged,
+
+              summary:
+                evaluation
+                  .summary,
+            }
+          : null,
+
+      evaluationStatus:
+        evaluation.available
+          ? "completed"
+          : "unavailable",
 
       model,
     });
   } catch (error) {
+    // ========================================
+    // Unexpected / final Gemini failure
+    // ========================================
+
     console.error(
       "Chat API error:",
       error

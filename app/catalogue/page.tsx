@@ -67,9 +67,9 @@ export default function CataloguePage() {
   }, [products, search]);
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
+    <main className="app-shell text-white">
       <section className="border-b border-gray-900">
-        <div className="mx-auto max-w-7xl px-6 py-16">
+        <div className="page-container py-12 sm:py-16">
           <p className="text-sm uppercase tracking-[0.3em] text-gray-500">
             Laptop AI Advisor
           </p>
@@ -103,14 +103,14 @@ export default function CataloguePage() {
                   )
                 }
                 placeholder="Search by laptop, brand, CPU, GPU..."
-                className="w-full rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 text-white outline-none transition placeholder:text-gray-600 focus:border-gray-600"
+                className="field-control"
               />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-10">
+      <section className="page-container py-8 sm:py-10">
         <div className="mb-6 flex items-center justify-between">
           <p className="text-sm text-gray-500">
             {filteredProducts.length}{" "}
@@ -127,11 +127,11 @@ export default function CataloguePage() {
         )}
 
         {loading ? (
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-12 text-center text-gray-500">
+          <div className="empty-state text-gray-500">
             Loading catalogue...
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-12 text-center">
+          <div className="empty-state">
             <h2 className="text-xl font-semibold">
               No products found
             </h2>
