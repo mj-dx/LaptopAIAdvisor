@@ -1,522 +1,209 @@
 # Laptop AI Advisor
 
-An AI-powered product recommendation platform built as a technical assessment.
+Laptop AI Advisor is a full-stack AI-powered product recommendation platform for a laptop retail catalogue. It helps customers find suitable laptops through a conversational assistant while keeping recommendations grounded in structured catalogue data.
 
-The application helps customers find suitable laptops from a real product catalogue using natural conversation. The assistant supports Arabic, English, Arabizi, and mixed-language messages while keeping product-related recommendations grounded in catalogue data.
+## Live Demo
 
-The platform includes product management, secure admin access, AI-powered recommendations, product cards inside the chat, conversation persistence, and per-response quality monitoring.
-
----
-
-## Overview
-
-Laptop AI Advisor combines a structured product catalogue with a conversational AI shopping assistant.
-
-Customers can describe what they need naturally.
-
-Examples:
+Add the current production URL here:
 
 ```text
-بدي لابتوب للبرمجة تحت 1000$
+https://laptopadvisor.vercel.app/
 ```
+
+## Source Code
 
 ```text
-bade laptop lal gaming w budget 1200$
+https://github.com/mj-dx/LaptopAIAdvisor
 ```
 
-```text
-I need a laptop for AI and programming under $1000.
-```
+## Industry Choice
 
-The assistant analyzes the customer's requirements and recommends products that actually exist in the catalogue.
+The selected industry is **laptop retail / consumer electronics**.
 
-Recommended products can be displayed directly inside the conversation as product cards containing their image, price, and relevant specifications.
+Laptops are a strong fit for an AI recommendation system because customers compare products using structured attributes such as price, CPU, RAM, storage, GPU, screen, battery, brand, and intended use. The catalogue therefore acts as the source of truth for recommendations and product-specific claims.
 
-Each AI response is also evaluated for:
+## Main Features
 
-- Accuracy
-- Hallucination risk
-- Grounding quality
-- Unsupported product claims
+### Customer Product Catalogue
 
-The evaluation results are stored alongside the conversation for later monitoring.
-
----
-
-## Why Laptops?
-
-I chose laptops because they are products customers genuinely need help comparing.
-
-A purchase decision can depend on several attributes, including:
-
-- Price
-- CPU
-- GPU
-- RAM
-- Storage
-- Display
-- Battery information
-- Intended workload
-
-This creates a useful environment for testing grounded AI recommendations because different customer requirements can lead to significantly different product choices.
-
-For example, a customer looking for a university laptop may have very different priorities from someone looking for a gaming machine or a laptop for AI development.
-
----
-
-## Core Features
-
-### Product Catalogue
-
-The application contains a catalogue of real products with structured attributes including:
+The public catalogue displays products stored in Supabase. Each product can contain:
 
 - Product name
 - Brand
 - Description
 - Price
 - CPU
-- GPU
 - RAM
 - Storage
+- GPU
 - Screen
-- Battery information when available
+- Battery information
 - Product image
 
-Products are stored in Supabase PostgreSQL.
+The catalogue can be edited by an authorized administrator without code changes.
 
----
+### Grounded AI Shopping Assistant
 
-### Product Management
+The assistant can:
 
-Authorized administrators can manage the catalogue through the application.
+- Understand Arabic
+- Understand English
+- Understand Arabizi
+- Handle mixed-language messages
+- Recommend products from the real catalogue
+- Compare suitable products
+- Respect customer budget constraints
+- Return validated product IDs
+- Avoid displaying products that do not exist in the catalogue
 
-Supported operations include:
+Recommended IDs returned by Gemini are validated against the current database before product cards are shown.
 
-- Add products
-- Edit products
-- Delete products
-- Update pricing
-- Update specifications
-- Upload product images
-- Change product descriptions
+### AI Quality Evaluation
 
-This allows the business owner to maintain the catalogue without requiring a developer to modify the source code.
+Each assistant answer is evaluated separately for:
 
----
+- Accuracy
+- Hallucination risk
+- Flagged status
+- Evaluation summary
+- Unsupported claims
 
-## Admin Security
-
-Administrative functionality is protected using Supabase Authentication and PostgreSQL Row Level Security.
-
-Public users can read the product information required by the shopping experience.
-
-Only authorized administrators can perform catalogue management operations.
-
-Admin authorization is controlled separately from normal authentication.
-
-Sensitive server credentials are never intentionally exposed to the browser.
-
----
-
-## AI Assistant
-
-The assistant is powered by the Google Gemini API.
-
-The AI is designed to understand:
-
-- Arabic
-- English
-- Arabizi
-- Mixed Arabic / English / Arabizi messages
-
-The response style adapts to the customer's communication style.
-
-For example:
+Automatic flagging is applied when:
 
 ```text
-Arabic input  -> Arabic response
-English input -> English response
-Arabizi input -> Natural Arabizi response
-Mixed input   -> Natural mixed response
+Hallucination Risk >= 30%
+OR
+Accuracy < 80%
 ```
 
----
+Scores are stored with assistant messages and can be reviewed in the admin dashboard.
 
-## Grounded Recommendations
+### Gemini Reliability
 
-The product catalogue is treated as the assistant's primary source of truth for product-specific information.
-
-The assistant is instructed not to invent:
-
-- Products
-- Prices
-- CPU specifications
-- GPU specifications
-- RAM
-- Storage
-- Screen specifications
-- Battery information
-- Warranty information
-- Stock status
-- Discounts
-- Benchmarks
-- FPS numbers
-
-If required product information is missing from the catalogue, the assistant should acknowledge that the information is unavailable rather than presenting invented information as fact.
-
-The assistant is also instructed to respect explicit customer budget limits.
-
----
-
-## Structured AI Output
-
-The AI returns structured recommendation data.
-
-Example:
-
-```json
-{
-  "answer": "This laptop is a suitable option for your requirements.",
-  "recommended_product_ids": [
-    "product-id"
-  ]
-}
-```
-
-This allows the application to separate the conversational answer from the actual products being recommended.
-
----
-
-## Product Recommendation Validation
-
-The application does not directly trust product IDs generated by the AI.
-
-Every returned product ID is validated against the current Supabase catalogue before the corresponding product is displayed.
-
-The flow is:
+Gemini calls retry temporary errors including:
 
 ```text
-Gemini recommendation
+408
+429
+500
+502
+503
+504
+```
+
+Retries use exponential backoff with jitter.
+
+The evaluator is treated as a non-critical dependency. If evaluation remains unavailable after retries, the AI answer is still returned and stored rather than failing the whole chat request.
+
+In this case:
+
+```text
+accuracy_score = NULL
+hallucination_risk = NULL
+evaluation status = unavailable
+```
+
+### Conversation Persistence
+
+The system stores:
+
+- Conversation ID
+- Message role
+- Message content
+- Recommended product IDs
+- Accuracy score
+- Hallucination risk
+- Flagged status
+- Evaluation details
+- Timestamps
+
+### Secure Conversation Reports
+
+When a conversation ends, the customer can receive a secure report link.
+
+The report includes:
+
+- Customer request summary
+- Recommended products
+- Recommendation reasoning
+- Full conversation
+- Average accuracy
+- Average hallucination risk
+- Flagged-answer count
+- Customer feedback
+
+A random report token is generated and only its SHA-256 hash is stored in the database.
+
+### Customer Feedback
+
+Customers can submit:
+
+- Rating from 1 to 5
+- Optional written comment
+
+Feedback is linked to the relevant conversation and visible to administrators.
+
+### Admin Dashboard
+
+Authorized administrators can access:
+
+- Product management
+- Conversation monitoring
+- Full conversation details
+- Per-message evaluation scores
+- Conversation-level average scores
+- Flagged-answer monitoring
+- Customer feedback
+- Dashboard statistics
+- Logout
+
+## Technology Stack
+
+| Area | Technology |
+| --- | --- |
+| Frontend | Next.js, React, TypeScript |
+| Styling | Tailwind CSS |
+| Backend | Next.js Route Handlers |
+| Database | Supabase PostgreSQL |
+| Authentication | Supabase Auth |
+| Storage | Supabase Storage |
+| AI | Google Gemini API |
+| Deployment | Vercel |
+| Source Control | Git and GitHub |
+
+## Architecture
+
+```text
+Customer Browser
         |
         v
-Recommended Product ID
+Next.js Application
+        |
+        +-----------------------------+
+        |                             |
+        v                             v
+Next.js API Routes                Supabase
+        |                             |
+        |                             +-- products
+        |                             +-- conversations
+        |                             +-- messages
+        |                             +-- feedback
+        |                             +-- admins
+        |                             +-- product-images
         |
         v
-Server Validation
+Gemini API
         |
-        +---- Exists in catalogue ----> Display Product
+        +-- Chat generation
         |
-        +---- Invalid ID -------------> Ignore
+        +-- Quality evaluation
 ```
 
-This provides an additional layer of protection against fabricated product recommendations.
-
----
-
-## Product Cards in Chat
-
-Recommended products are displayed directly below the AI response.
-
-Each product card can show:
-
-- Product image
-- Product name
-- Brand
-- Price
-- CPU
-- GPU
-- RAM
-- Storage
-- Screen information
-- Battery information
-- Product description
-
-Customers can also continue the conversation about a specific recommendation using the product card.
-
----
-
-## Conversation Persistence
-
-Conversations and messages are stored in Supabase.
-
-A conversation contains multiple user and assistant messages.
-
-The general structure is:
-
-```text
-Conversation
-    |
-    +-- User Message
-    |
-    +-- Assistant Message
-    |       |
-    |       +-- Accuracy Score
-    |       +-- Hallucination Risk
-    |       +-- Flagged Status
-    |       +-- Evaluation Details
-    |
-    +-- User Message
-    |
-    +-- Assistant Message
-            |
-            +-- Accuracy Score
-            +-- Hallucination Risk
-            +-- Flagged Status
-            +-- Evaluation Details
-```
-
-This makes it possible to inspect complete customer conversations and their AI quality metrics.
-
----
-
-## Quality Monitoring
-
-Every assistant response is evaluated before being stored.
-
-The evaluator receives:
-
-- Customer message
-- Assistant response
-- Product catalogue
-- Validated recommendation IDs
-
-It then returns structured evaluation information.
-
-Example:
-
-```json
-{
-  "accuracy_score": 96,
-  "hallucination_risk": 4,
-  "flagged": false,
-  "summary": "The response is supported by the supplied catalogue.",
-  "unsupported_claims": []
-}
-```
-
-The evaluation is stored with the assistant message.
-
----
-
-## Accuracy Score
-
-Accuracy is represented as a value between:
-
-```text
-0 - 100
-```
-
-The evaluator considers whether:
-
-- Product names are correct
-- Prices match the catalogue
-- CPU claims are supported
-- GPU claims are supported
-- RAM claims are supported
-- Storage claims are supported
-- Screen information is supported
-- Budget requirements are respected
-- Comparisons are grounded in catalogue information
-- The recommendation addresses the customer's request
-
-A score closer to 100 represents a more accurate and grounded response.
-
----
-
-## Hallucination Risk
-
-Hallucination risk is represented from:
-
-```text
-0 - 100
-```
-
-Lower is better.
-
-Potential hallucinations include:
-
-- Inventing a product
-- Inventing a price
-- Inventing battery information
-- Inventing warranty information
-- Inventing specifications
-- Inventing benchmark results
-- Claiming unavailable information as fact
-- Saying a product is within budget when it exceeds the stated budget
-
-Example:
-
-```text
-Accuracy:           96%
-Hallucination Risk: 4%
-Status:             Grounded
-```
-
----
-
-## Flagging Strategy
-
-A response can be automatically flagged when:
-
-```text
-Hallucination Risk >= 30
-```
-
-or:
-
-```text
-Accuracy < 80
-```
-
-Major factual problems can also cause a response to be flagged.
-
-Examples include:
-
-- Invented product
-- Incorrect price
-- Invented major specification
-- Explicit budget violation
-
-In a production environment, flagged responses could be reviewed, hidden, or regenerated before being shown to a customer.
-
----
-
-## AI Architecture
-
-The main application flow is:
-
-```text
-Customer
-   |
-   v
-Next.js Chat Interface
-   |
-   v
-Next.js API Route
-   |
-   +----------------------+
-   |                      |
-   v                      v
-Supabase Catalogue    Conversation Context
-   |                      |
-   +----------+-----------+
-              |
-              v
-         System Prompt
-              |
-              v
-          Gemini API
-              |
-              v
-     Structured Response
-              |
-              v
-    Product ID Validation
-              |
-              v
-       Quality Evaluator
-              |
-      +-------+-------+
-      |               |
-      v               v
- Accuracy Score   Hallucination Risk
-      |               |
-      +-------+-------+
-              |
-              v
-       Save to Supabase
-              |
-              v
-   Response + Product Cards
-```
-
----
-
-## Tech Stack
-
-### Frontend
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-
-### Backend
-
-- Next.js Route Handlers
-
-### Database
-
-- Supabase
-- PostgreSQL
-
-### Authentication
-
-- Supabase Auth
-
-### Storage
-
-- Supabase Storage
-
-### AI
-
-- Google Gemini API
-
-### Deployment
-
-- Vercel
-
----
-
-## Project Structure
-
-```text
-app/
-├── admin/
-│   ├── login/
-│   │   └── page.tsx
-│   │
-│   └── products/
-│       └── page.tsx
-│
-├── api/
-│   └── chat/
-│       └── route.ts
-│
-├── catalogue/
-│   └── page.tsx
-│
-├── chat/
-│   └── page.tsx
-│
-├── page.tsx
-├── layout.tsx
-└── globals.css
-
-components/
-└── products/
-    ├── ProductForm.tsx
-    ├── ProductCard.tsx
-    └── AdminProductCard.tsx
-
-lib/
-├── ai/
-│   ├── systemPrompt.ts
-│   ├── evaluatorPrompt.ts
-│   └── evaluateAnswer.ts
-│
-├── supabase.ts
-└── supabaseAdmin.ts
-
-types/
-└── product.ts
-```
-
----
+Sensitive writes and private conversation-report reads are handled server-side.
 
 ## Database Structure
 
-### products
+### `products`
 
 ```text
 id
@@ -534,15 +221,17 @@ image_url
 created_at
 ```
 
-### conversations
+### `conversations`
 
 ```text
 id
 created_at
 ended_at
+report_token_hash
+report_created_at
 ```
 
-### messages
+### `messages`
 
 ```text
 id
@@ -557,437 +246,268 @@ evaluation_details
 created_at
 ```
 
-### admins
+### `feedback`
 
 ```text
-user_id
-created_at
-```
-
-### feedback
-
-```text
-id
 conversation_id
 rating
 comment
 created_at
 ```
 
----
+### `admins`
+
+```text
+user_id
+```
+
+## Security
+
+### Row Level Security
+
+Supabase Row Level Security protects sensitive tables. Public users do not receive unrestricted direct access to conversations, messages, feedback, or admin data.
+
+### Server-Side Secrets
+
+Sensitive values stay server-side:
+
+```text
+GEMINI_API_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+They must never use the `NEXT_PUBLIC_` prefix.
+
+### Admin Authorization
+
+Administrators authenticate through Supabase Auth and must also exist in the `admins` table.
+
+The shared admin layout acts as the UI authorization guard while Supabase RLS remains the actual database-security boundary.
+
+### Secure Report Access
+
+Report links require both:
+
+```text
+conversation_id + secure report token
+```
+
+Only a SHA-256 hash of the token is stored.
+
+## AI Grounding Strategy
+
+```text
+Load products from database
+        |
+        v
+Send catalogue to Gemini
+        |
+        v
+Gemini returns answer + product IDs
+        |
+        v
+Validate IDs against catalogue
+        |
+        v
+Discard invalid IDs
+        |
+        v
+Show validated product cards
+```
+
+This adds deterministic validation between model output and customer-facing recommendations.
+
+## Quality Scoring Method
+
+The evaluator receives:
+
+- Customer message
+- Assistant answer
+- Validated recommended product IDs
+- Current product catalogue
+
+It estimates accuracy and hallucination risk and returns unsupported claims plus a short explanation.
+
+A response is automatically flagged when:
+
+```text
+hallucination_risk >= 30
+OR
+accuracy_score < 80
+```
+
+The evaluator is a monitoring signal, not a perfect factual guarantee. In production, important factual checks should increasingly move toward deterministic validation.
 
 ## Environment Variables
 
-Create a `.env.local` file in the project root.
-
-The application requires:
+Create `.env.local`:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-SUPABASE_SERVICE_ROLE_KEY=
-
-GEMINI_API_KEY=
+SUPABASE_SERVICE_ROLE_KEY=your_server_only_supabase_secret
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
-Sensitive credentials such as:
+Optional:
 
-```text
-SUPABASE_SERVICE_ROLE_KEY
-GEMINI_API_KEY
+```env
+GEMINI_CHAT_MODEL=gemini-3.1-flash-lite
+GEMINI_EVALUATOR_MODEL=gemini-3.1-flash-lite
 ```
 
-must remain server-side.
+Do not commit `.env.local`.
 
-They must not be prefixed with:
-
-```text
-NEXT_PUBLIC_
-```
-
-and must not be committed to the repository.
-
----
-
-## Running Locally
-
-Install dependencies:
+## Local Development
 
 ```bash
+git clone https://github.com/mj-dx/LaptopAIAdvisor.git
+cd LaptopAIAdvisor
 npm install
-```
-
-Start the development server:
-
-```bash
 npm run dev
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:3000
 ```
 
-Catalogue:
+Before deployment:
 
-```text
-http://localhost:3000/catalogue
+```bash
+npm run build
 ```
 
-AI Assistant:
+## Main Routes
+
+### Public
 
 ```text
-http://localhost:3000/chat
+/
 ```
-
-Admin Login:
 
 ```text
-http://localhost:3000/admin/login
+/catalogue
 ```
-
-Admin Product Management:
 
 ```text
-http://localhost:3000/admin/products
+/chat
 ```
-
----
-
-## Security
-
-Several security measures are implemented.
-
-### Row Level Security
-
-Supabase RLS controls database operations.
-
-Public users can access the catalogue information required by the shopping experience.
-
-Catalogue modifications are restricted to authorized administrators.
-
-### Server-Only Credentials
-
-Sensitive credentials including the Gemini API key and Supabase secret key are used only in server-side code.
-
-### Product Validation
-
-AI-generated product IDs are validated against the database before products are shown to the customer.
-
-### Admin Authorization
-
-Authentication alone does not automatically provide administrative access.
-
-Administrative authorization is checked separately.
-
----
-
-## Product Images
-
-Product images can be uploaded and stored using Supabase Storage.
-
-Supported image formats include:
 
 ```text
-JPEG
-PNG
-WebP
+/report/[id]?token=...
 ```
 
-Maximum upload size:
+### Admin
 
 ```text
-5 MB
+/admin/login
+/admin
+/admin/products
+/admin/conversations
+/admin/conversations/[id]
+/admin/feedback
 ```
-
-Product images can be publicly viewable while upload, modification, and deletion operations remain restricted.
-
----
-
-## Current Catalogue
-
-The catalogue contains products across multiple categories, including:
-
-- Gaming laptops
-- Business laptops
-- University laptops
-- Apple laptops
-- Budget laptops
-- High-performance laptops
-
-Brands represented in the current dataset include:
-
-- Lenovo
-- Dell
-- Acer
-- Apple
-- Gigabyte
-- MSI
-
-The catalogue can be modified through the administration interface.
-
----
-
-## Cost at 1,000 Conversations per Day
-
-The frontend can be deployed on Vercel, while Supabase provides database, authentication, and storage services.
-
-The primary variable operating cost is AI model usage.
-
-For 1,000 conversations per day, the actual cost depends on:
-
-- Number of messages per conversation
-- Catalogue context size
-- Input token volume
-- Output token volume
-- Number of evaluation requests
-- Gemini model used
-
-The current architecture can perform approximately one generation request and one evaluation request for each assistant response.
-
-At larger scale, costs could be reduced by:
-
-- Retrieving only relevant products instead of sending the full catalogue
-- Limiting conversation context
-- Using a smaller model for evaluation
-- Caching reusable catalogue context
-- Performing deterministic validation before AI evaluation
-- Avoiding unnecessary model calls for queries that can be handled using structured data
-
-Exact production cost should be calculated using the current provider pricing and measured token usage before deployment at scale.
-
----
-
-## What I Would Improve Next
-
-### Retrieval
-
-Instead of sending the entire catalogue to the model, a retrieval layer could select only products relevant to the customer's request.
-
-This would reduce:
-
-- Token usage
-- Latency
-- Cost
-- Irrelevant model context
-
----
-
-### Hybrid Evaluation
-
-The current model-based evaluator could be combined with deterministic checks for:
-
-- Exact prices
-- Product IDs
-- Budget violations
-- CPU
-- GPU
-- RAM
-- Storage
-
-This would make quality scoring less dependent on another language model.
-
----
-
-### Product Availability
-
-The product schema could be expanded with fields such as:
-
-```text
-availability
-condition
-source_url
-last_verified_at
-```
-
-This would allow the assistant to distinguish between:
-
-- Available
-- Sold out
-- New
-- Used
-- Open-box
-
-products.
-
----
-
-### Analytics Dashboard
-
-Additional analytics could include:
-
-- Average accuracy
-- Average hallucination risk
-- Number of flagged responses
-- Most recommended products
-- Conversation volume
-- Customer ratings
-- Quality trends over time
-
----
-
-### Feedback
-
-A public conversation-specific report could include:
-
-- Customer request summary
-- Recommended products
-- Recommendation reasoning
-- Quality scores
-- Customer rating
-
----
-
-### Deterministic Grounding
-
-A production version should perform more factual validation directly in application code before relying on an AI evaluator.
-
-For example:
-
-```text
-AI says product costs $900
-            |
-            v
-Read actual database price
-            |
-            v
-$900 == database price?
-        /        \
-      Yes         No
-       |           |
-       v           v
-    Valid       Flag claim
-```
-
-This provides stronger guarantees for structured product information.
-
----
-
-## What I Would Not Trust This System to Do Yet
-
-I would not currently allow the assistant to guarantee information that is not explicitly represented in the catalogue.
-
-For example, I would not trust it to independently guarantee:
-
-- Real-world battery life
-- Current product availability
-- Warranty coverage
-- Benchmark performance
-- Gaming FPS
-- Thermal performance
-- Long-term reliability
-
-I would also not treat the current quality evaluator as an absolute measure of correctness.
-
-Because the evaluator itself uses a language model, a production implementation should combine model-based evaluation with deterministic catalogue validation and continuous monitoring.
-
-When information is unavailable, the safest behavior is to acknowledge that limitation rather than generate an unsupported answer.
-
----
-
-## Development Approach
-
-The project was built using a core-first approach.
-
-Priority was given to:
-
-1. Structured product catalogue
-2. Owner-controlled product management
-3. Secure administration
-4. Grounded AI recommendations
-5. Multilingual conversation
-6. Product cards inside chat
-7. Conversation persistence
-8. Per-response quality monitoring
-
-Optional functionality is intentionally secondary to correctness and reliability of the core experience.
-
----
-
-## AI Usage During Development
-
-AI-assisted development tools were used during implementation for:
-
-- Architecture discussion
-- Code generation assistance
-- Debugging
-- Prompt design
-- Evaluation strategy
-- Documentation assistance
-
-Generated code and architectural decisions were reviewed and integrated into the application during development.
-
----
 
 ## Deployment
 
-The application is intended to be publicly deployed using Vercel.
+The application is deployed on Vercel. The GitHub repository is connected to Vercel, so pushes to the configured production branch can trigger automatic deployments.
 
-Production environment variables must be configured through the deployment environment and must never be committed to the repository.
-
-Before production deployment, the following should be verified:
-
-- Supabase RLS policies
-- Admin authorization
-- Environment variable security
-- Gemini API restrictions
-- Storage policies
-- Error handling
-- Rate limiting
-- Database indexes
-- AI usage monitoring
-
----
-
-## Future Production Architecture
-
-For a larger catalogue and higher traffic, the architecture could evolve into:
+Required production environment variables:
 
 ```text
-Customer
-   |
-   v
-Next.js
-   |
-   v
-Request Analysis
-   |
-   v
-Catalogue Retrieval
-   |
-   +---- PostgreSQL filters
-   |
-   +---- Semantic search
-   |
-   v
-Small Relevant Product Set
-   |
-   v
-Gemini
-   |
-   v
-Deterministic Validator
-   |
-   v
-AI Quality Evaluator
-   |
-   v
-Response
-   |
-   +---- Product Cards
-   |
-   +---- Quality Metrics
-   |
-   v
-Supabase Analytics
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+GEMINI_API_KEY
 ```
 
-This architecture would provide better scalability, lower token usage, lower latency, and stronger grounding than sending the complete catalogue with every request.
+## Cost at 1,000 Conversations per Day
 
----
+Cost depends mainly on the number of AI turns and token volume. The current design may use two Gemini calls for each assistant answer: one for generation and one for evaluation. Assuming roughly four AI answers per conversation and a moderate catalogue/context size, a practical planning estimate for the AI portion is approximately **$250-$350 per month** at current Gemini 3.1 Flash-Lite paid rates, before any Vercel or Supabase overages. Actual cost can vary significantly with prompt size and conversation length.
 
-## License
+I would reduce cost by compacting the catalogue context, limiting conversation history, caching stable context, replacing part of the LLM-based evaluator with deterministic checks, selectively evaluating only responses that need it, and monitoring actual token usage before scaling.
 
-This project was created as a technical assessment and remains the property of its author.
+## What I Would Build Next
+
+1. Move admin authorization fully to server-side session validation.
+2. Add rate limiting to public AI endpoints.
+3. Add abuse protection.
+4. Add structured logging for Gemini latency, retries, errors, and token usage.
+5. Add deterministic validation for product prices and specifications.
+6. Reduce dependence on a second LLM call for evaluation.
+7. Add pagination for large conversation and feedback datasets.
+8. Add aggregate analytics.
+9. Add report-token expiration and revocation.
+10. Add automated tests for catalogue grounding, auth, RLS, reports, and API failure cases.
+11. Add monitoring for repeated hallucination flags.
+12. Optimize catalogue context for larger inventories.
+
+## What I Would Not Fully Trust Yet
+
+I would not treat the current evaluator score as a perfect factual guarantee because it is itself produced by an AI model. The architecture reduces risk through catalogue grounding and product-ID validation, but production-grade safety should add deterministic checks for prices and specifications, automated tests, rate limiting, monitoring, report-token lifecycle controls, and review workflows for repeatedly flagged conversations.
+
+Temporary third-party AI availability is also an operational risk, which is why retries and graceful evaluator fallback are implemented.
+
+## Production Handling of High-Risk Answers
+
+In production, a high-risk answer should:
+
+- Store the flag and evaluation details
+- Remain visible in the admin dashboard
+- Be included in monitoring
+- Trigger deterministic checks for critical fields
+- Be queued for review when severe
+- Contribute to future prompt and validation improvements
+- Be regenerated or blocked when deterministic validation detects a serious mismatch
+
+## AI and Development Tools
+
+AI-assisted development tools were used for:
+
+- Implementation guidance
+- Code review
+- Debugging
+- UX iteration
+- Documentation
+- Prompt design
+
+Final integration, database rules, deployment configuration, credentials, and application behavior remain part of the implemented project architecture.
+
+## Current Project Status
+
+Implemented:
+
+- Product catalogue
+- Admin product management
+- Product image storage
+- Admin authentication
+- Database RLS protection
+- Multilingual AI chat
+- Catalogue-grounded recommendations
+- Product ID validation
+- Per-answer quality evaluation
+- Conversation persistence
+- Gemini retry handling
+- Graceful evaluator fallback
+- Admin dashboard
+- Conversation list
+- Full conversation view
+- Feedback administration
+- Secure conversation reports
+- Customer ratings and comments
+- Vercel deployment workflow
+
+The application is suitable as a technical-assessment demonstration and contains the main architecture needed for further production hardening.
+
+## Repository
+
+```text
+https://github.com/mj-dx/LaptopAIAdvisor
+```
+
+## Author
+
+Mohammad Hamdan
